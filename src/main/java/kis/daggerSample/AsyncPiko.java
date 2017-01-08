@@ -7,7 +7,10 @@ package kis.daggerSample;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 import javax.inject.Qualifier;
 
@@ -40,12 +43,15 @@ public class AsyncPiko {
         ListenableFuture<String> ppap();
     }
 
-    Reporter reporter;
     SpanId spanId;
+    Map<String, Brave> braves = new HashMap<>();
 
     AsyncPiko(Reporter reporter, SpanId spanId) {
-        this.reporter = reporter;
         this.spanId = spanId;
+        Stream.of("pen", "apple", "applepen", "penPineapple", "penPineappleApplePen")
+                .forEach(name -> braves.put(name, 
+                                            new Brave.Builder(name + " task")
+                                                     .reporter(reporter).build()));
     }
     
     @Produces
@@ -78,7 +84,7 @@ public class AsyncPiko {
         ListenableFutureTask<T> task = ListenableFutureTask.create(() -> {
             System.out.println("start " + name);
 
-            Brave brave = new Brave.Builder(name + " task").reporter(reporter).build();
+            Brave brave = braves.get(name);//new Brave.Builder(name + " task").reporter(reporter).build();
             ServerTracer serverTracer = brave.serverTracer();
             serverTracer.setStateCurrentTrace(spanId, "ppap span");
             //serverTracer.setServerReceived();
