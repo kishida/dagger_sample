@@ -11,16 +11,11 @@ import java.util.function.Supplier;
 
 import javax.inject.Qualifier;
 
-import com.github.kristofa.brave.Brave;
-import com.github.kristofa.brave.ClientTracer;
-import com.github.kristofa.brave.ServerTracer;
-import com.github.kristofa.brave.SpanId;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListenableFutureTask;
 import dagger.producers.ProducerModule;
 import dagger.producers.Produces;
 import dagger.producers.ProductionComponent;
-import zipkin.reporter.Reporter;
 
 /**
  *
@@ -40,14 +35,6 @@ public class AsyncPiko {
         ListenableFuture<String> ppap();
     }
 
-    Reporter reporter;
-    SpanId spanId;
-
-    AsyncPiko(Reporter reporter, SpanId spanId) {
-        this.reporter = reporter;
-        this.spanId = spanId;
-    }
-    
     @Produces
     public ListenableFuture<Pen> iHaveAPen() {
         return task("pen", Pen::new, 100);
@@ -77,21 +64,11 @@ public class AsyncPiko {
     private <T> ListenableFuture<T> task(String name, Supplier<T> supplier, long millis) {
         ListenableFutureTask<T> task = ListenableFutureTask.create(() -> {
             System.out.println("start " + name);
-
-            Brave brave = new Brave.Builder(name + " task").reporter(reporter).build();
-            ServerTracer serverTracer = brave.serverTracer();
-            serverTracer.setStateCurrentTrace(spanId, "ppap span");
-            //serverTracer.setServerReceived();
-            ClientTracer clientTracer = brave.clientTracer();
-            clientTracer.startNewSpan(name);
-            clientTracer.setClientSent();
             try {
                 Thread.sleep(millis);
             } catch (InterruptedException ignored) {
             }
             T result = supplier.get();
-            clientTracer.setClientReceived();
-            //serverTracer.setServerSend();
             System.out.println("finish " + name);
 
             return result;
